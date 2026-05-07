@@ -1,2 +1,0 @@
-iter,weights_learned,regret,preferred_solution,computed_solution
-20,"{'makespan': 106.71895716335975, 'workstations': 6.72749994932561, 'employees': 5.054470284992944, 'robots': 1, 'employee_time': 1.2100000000000002}",0.07696472571739563,"{'makespan': 0.37333333333333335, 'workstations': 6, 'employees': 2, 'robots': 1, 'employee_time': 0.58}","{'makespan': 0.4022222222222222, 'workstations': 5, 'employees': 2, 'robots': 0, 'employee_time': 0.5777777777777777}"

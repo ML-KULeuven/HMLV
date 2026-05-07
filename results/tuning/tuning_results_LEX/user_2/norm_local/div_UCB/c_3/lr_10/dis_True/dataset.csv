@@ -1,3 +1,0 @@
-,iter,obj 1,obj 2,picked,user_feedback,time 1,time 2,Regret
-0,1,"{'makespan': 1.0166666666666666, 'workstations': 3, 'employees': 1, 'robots': 0, 'employee_time': 1.0}","{'makespan': 3.577777777777778, 'workstations': 9, 'employees': 3, 'robots': 3, 'employee_time': 0.057777777777777775}",0,correct,2.199481964111328,0.480755090713501,1.723202339969844
-1,2,"{'makespan': 1.0166666666666666, 'workstations': 3, 'employees': 1, 'robots': 0, 'employee_time': 1.0}","{'makespan': 0.8388888888888889, 'workstations': 3, 'employees': 2, 'robots': 0, 'employee_time': 1.0888888888888888}",1,correct,30.09412121772766,11.308079957962036,1.723202339969844

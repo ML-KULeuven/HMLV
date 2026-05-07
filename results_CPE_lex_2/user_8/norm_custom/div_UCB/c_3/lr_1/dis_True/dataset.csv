@@ -1,2 +1,0 @@
-,iter,obj 1,obj 2,picked,user_feedback,time 1,time 2,Regret
-0,1,"{'makespan': 1.0166666666666666, 'workstations': 3, 'employees': 1, 'robots': 0, 'employee_time': 1.0}","{'makespan': 3.577777777777778, 'workstations': 14, 'employees': 4, 'robots': 4, 'employee_time': 0.057777777777777775}",1,correct,0.9662845134735107,0.1871945858001709,16.013083654517118

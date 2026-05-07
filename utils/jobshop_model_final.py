@@ -553,8 +553,8 @@ class FJTransportProblemFinal:
         self.add_no_overlap_constraints()                       #ok
         self.add_workstation_usage_constraints()
         #
-        self.add_item_time_window_constraints(ub=self.horizon)
-        self.add_precedence_tightening_constraints(max_jump=4)
+        #self.add_item_time_window_constraints(ub=self.horizon)
+        #self.add_precedence_tightening_constraints(max_jump=4)
 
     def op_one_agent(self):
         for i in self.items:
@@ -799,7 +799,7 @@ class FJTransportProblemFinal:
         # 1) Automatic workstations (NO int products)
         # ------------------------------------------------------------
         for ws_id in self.workstations_auto.keys():
-            starts, durs, ends = [], [], []
+            starts, durs, ends, optional = [], [], [], []
 
             for i in self.items:
                 for op in self.processing_ops[i]:
@@ -809,28 +809,29 @@ class FJTransportProblemFinal:
 
                     # constant duration for (ws_id, op)
                     dur_const = self.workstations_auto[ws_id]["durations"][op]
-                    tag = f"{i}_{op}_auto_{ws_id}"
+                    # tag = f"{i}_{op}_auto_{ws_id}"
 
-                    Sg, Dg, Eg = self.add_collapsed_task(
-                        S_real=self.S[i][op],
-                        z=z_ws,
-                        dur_const=dur_const,
-                        tag=tag
-                    )
+                    # Sg, Dg, Eg = self.add_collapsed_task(
+                    #     S_real=self.S[i][op],
+                    #     z=z_ws,
+                    #     dur_const=dur_const,
+                    #     tag=tag
+                    # )
 
-                    starts.append(Sg)
-                    durs.append(Dg)
-                    ends.append(Eg)
+                    starts.append(self.S[i][op])
+                    durs.append(dur_const)
+                    ends.append(self.S[i][op] + dur_const)
+                    optional.append(z_ws)
 
             if len(starts) > 1:
-                self.model += cp.NoOverlap(starts, durs, ends)
+                self.model += cp.NoOverlapOptional(starts, durs, ends, optional)
 
         # ------------------------------------------------------------
         # 2) Human workstations (NO int products)
         #    Use ws×skill tasks with y = z_hws AND z_skill
         # ------------------------------------------------------------
         for hws_id in self.workstations_human.keys():
-            starts, durs, ends = [], [], []
+            starts, durs, ends, optional = [], [], [], []
 
             for i in self.items:
                 for op in self.processing_ops[i]:
@@ -848,21 +849,22 @@ class FJTransportProblemFinal:
                         # # AND linearization:
                         # self.model += (y == z_hws)
 
-                        tag = f"{i}_{op}_human_{hws_id}_skill{skill}"
+                        # tag = f"{i}_{op}_human_{hws_id}_skill{skill}"
 
-                        Sg, Dg, Eg = self.add_collapsed_task(
-                            S_real=self.S[i][op],
-                            z=z_hws,
-                            dur_const=dur_const,
-                            tag=tag
-                        )
+                        # Sg, Dg, Eg = self.add_collapsed_task(
+                        #     S_real=self.S[i][op],
+                        #     z=z_hws,
+                        #     dur_const=dur_const,
+                        #     tag=tag
+                        # )
 
-                        starts.append(Sg)
-                        durs.append(Dg)
-                        ends.append(Eg)
+                        starts.append(self.S[i][op])
+                        durs.append(dur_const)
+                        ends.append(self.S[i][op] + dur_const)
+                        optional.append(z_hws)
 
             if len(starts) > 1:
-                self.model += cp.NoOverlap(starts, durs, ends)
+                self.model += cp.NoOverlapOptional(starts, durs, ends, optional)
 
         # ------------------------------------------------------------
         # 3) Human operators pooled by skill (unchanged)
@@ -873,7 +875,7 @@ class FJTransportProblemFinal:
             
             if not self.use_no_overlap:
                 capacity = self.O_active_count[skill]
-                starts, durs, demands, ends = [], [], [], []
+                starts, durs, demands, ends, optional = [], [], [], [], []
 
                 # 3a) processing using this skill
                 for i in self.items:
@@ -882,12 +884,13 @@ class FJTransportProblemFinal:
                         if z is None:
                             continue
                         dur_const = self.skill_durations[skill][op]
-                        Sg, Dg, Eg = self.add_collapsed_task(self.S[i][op], z, dur_const,
-                                                             f"{i}_{op}_skill{skill}")
+                        # Sg, Dg, Eg = self.add_collapsed_task(self.S[i][op], z, dur_const,
+                        #                                      f"{i}_{op}_skill{skill}")
                         starts.append(self.S[i][op])
                         durs.append(dur_const)
                         ends.append(self.S[i][op] + dur_const)
-                        demands.append(z)
+                        demands.append(1)
+                        optional.append(z)
 
                 # 3b) transport tasks using this skill pool
                 pool_id = f"skill_{skill}"
@@ -903,14 +906,15 @@ class FJTransportProblemFinal:
                             starts.append(self.S[i][t_op])
                             durs.append(dur_T)
                             ends.append(self.S[i][t_op] + dur_T)
-                            demands.append(z)
+                            demands.append(1)
+                            optional.append(z)
 
                 if starts:
-                    self.model += cp.Cumulative(starts, durs, ends, demands, capacity)
+                    self.model += cp.CumulativeOptional(starts, durs, ends, demands, capacity, optional)
             else:
                 # Use NoOverlap for each operator of this skill
                 for op_id in self.skill_to_ops[skill]:
-                    starts, durs, ends = [], [], []
+                    starts, durs, ends, optional = [], [], [], []
                     
                     # 3a) processing
                     for i in self.items:
@@ -919,11 +923,12 @@ class FJTransportProblemFinal:
                             if z is None:
                                 continue
                             dur_const = self.skill_durations[skill][op]
-                            Sg, Dg, Eg = self.add_collapsed_task(self.S[i][op], z, dur_const,
-                                                                 f"{i}_{op}_op{op_id}")
-                            starts.append(Sg)
-                            durs.append(Dg)
-                            ends.append(Eg)
+                            # Sg, Dg, Eg = self.add_collapsed_task(self.S[i][op], z, dur_const,
+                            #                                      f"{i}_{op}_op{op_id}")
+                            starts.append(self.S[i][op])
+                            durs.append(dur_const)
+                            ends.append(self.S[i][op] + dur_const)
+                            optional.append(z)
 
                     # 3b) transport
                     if "T" in self.skill_durations[skill]:
@@ -933,22 +938,23 @@ class FJTransportProblemFinal:
                                 z = self.Z_op[i][t_op].get(op_id)
                                 if z is None:
                                     continue
-                                Sg, Dg, Eg = self.add_collapsed_task(self.S[i][t_op], z, dur_T,
-                                                                     f"{i}_{t_op}_op{op_id}")
-                                starts.append(Sg)
-                                durs.append(Dg)
-                                ends.append(Eg)
+                                # Sg, Dg, Eg = self.add_collapsed_task(self.S[i][t_op], z, dur_T,
+                                #                                      f"{i}_{t_op}_op{op_id}")
+                                starts.append(self.S[i][t_op])
+                                durs.append(dur_T)
+                                ends.append(self.S[i][t_op] + dur_T)
+                                optional.append(z)
 
                     if len(starts) > 1:
-                        self.model += cp.NoOverlap(starts, durs, ends)
+                        self.model += cp.NoOverlapOptional(starts, durs, ends, optional)
 
         # ------------------------------------------------------------
-        # 4) Mobile robots pooled (unchanged)
+        # 4) Mobile robots pooled
         # ------------------------------------------------------------
         if self.robot_ids:
             if not self.use_no_overlap:
                 capacity = self.R_active_count
-                starts, durs, ends, demands = [], [], [], []
+                starts, durs, ends, demands, optional = [], [], [], [], []
                 dur_T = self.robot_T_duration
                 for i in self.items:
                     for t_op in self.transport_ops[i]:
@@ -960,53 +966,55 @@ class FJTransportProblemFinal:
                         starts.append(self.S[i][t_op])
                         durs.append(dur_T)
                         ends.append(self.S[i][t_op]+dur_T)
-                        demands.append(z)
+                        demands.append(1)
+                        optional.append(z)
 
                 if starts:
-                    self.model += cp.Cumulative(starts, durs, ends, demands, capacity)
+                    self.model += cp.CumulativeOptional(starts, durs, ends, demands, capacity, optional)
             else:
                 # Use NoOverlap for each robot
                 dur_T = self.robot_T_duration
                 for robot_id in self.robot_ids:
-                    starts, durs, ends = [], [], []
+                    starts, durs, ends, optional = [], [], [], []
                     for i in self.items:
                         for t_op in self.transport_ops[i]:
                             z = self.Z_robot[i][t_op].get(robot_id)
                             if z is None:
                                 continue
-                            Sg, Dg, Eg = self.add_collapsed_task(self.S[i][t_op], z, dur_T,
-                                                                 f"{i}_{t_op}_robot{robot_id}")
-                            starts.append(Sg)
-                            durs.append(Dg)
-                            ends.append(Eg)
+                            # Sg, Dg, Eg = self.add_collapsed_task(self.S[i][t_op], z, dur_T,
+                            #                                      f"{i}_{t_op}_robot{robot_id}")
+                            starts.append(self.S[i][t_op])
+                            durs.append(dur_T)
+                            ends.append(self.S[i][t_op] + dur_T)
+                            optional.append(z)
 
                     if len(starts) > 1:
-                        self.model += cp.NoOverlap(starts, durs, ends)
+                        self.model += cp.NoOverlapOptional(starts, durs, ends, optional)
 
         # ------------------------------------------------------------
-        # 5) Conveyors (unchanged, you already did tagit right)
+        # 5) Conveyors
         # ------------------------------------------------------------
         for c_id in self.conveyors.keys():
-            starts, durs, ends = [], [], []
+            starts, durs, ends, optional = [], [], [], []
 
             for i in self.items:
                 for t_op in self.transport_ops[i]:
                     z_tr_c = self.Z_tr[i][t_op].get(c_id)
                     if z_tr_c is None:
                         continue
-
                     S = self.S[i][t_op]
                     dur_c = self.dict_agent_actions[c_id][t_op]
 
-                    tag = f"{i}_{t_op}_{c_id}"
-                    Sg, Dg, Eg = self.add_collapsed_task(S_real=S, z=z_tr_c,
-                                                         dur_const=dur_c, tag=tag)
-                    starts.append(Sg)
-                    durs.append(Dg)
-                    ends.append(Eg)
+                    # tag = f"{i}_{t_op}_{c_id}"
+                    # Sg, Dg, Eg = self.add_collapsed_task(S_real=S, z=z_tr_c,
+                    #                                      dur_const=dur_c, tag=tag)
+                    starts.append(S)
+                    durs.append(dur_c)
+                    ends.append(S + dur_c)
+                    optional.append(z_tr_c)
 
             if len(starts) > 1:
-                self.model += cp.NoOverlap(starts, durs, ends)
+                self.model += cp.NoOverlapOptional(starts, durs, ends, optional)
 
     def add_workstation_usage_constraints(self):
         """

@@ -1,2 +1,0 @@
-iter,weights_learned,regret,preferred_solution,computed_solution
-20,"{'makespan': 1617717.8357762094, 'workstations': 9412.343651268613, 'employees': 1, 'robots': np.float64(567000.2325218021), 'employee_time': 15934088.227281729}",0.0,"{'makespan': 0.7922222222222223, 'workstations': 7, 'employees': 1, 'robots': 0, 'employee_time': 0.09111111111111111}","{'makespan': 0.7922222222222223, 'workstations': 7, 'employees': 1, 'robots': 0, 'employee_time': 0.09111111111111111}"

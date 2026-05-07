@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 timeout = 600
+RESULT_PATTERNS = [
+    "cp_model_results/**/solution_data_training_1_*.csv",
+    "data/cp_model_results/**/solution_data_training_1_*.csv",
+]
 
 # Mapping training instance number to total items
 items_map = {
@@ -28,16 +32,51 @@ def compute_par2(df):
             
     return sum(par2_values) / len(par2_values) if par2_values else 0
 
+def infer_solver_and_constraint(path):
+    parts = os.path.normpath(path).split(os.sep)
+
+    if parts[:2] == ["data", "cp_model_results"]:
+        solver_index = 2
+    elif parts[:1] == ["cp_model_results"]:
+        solver_index = 1
+    else:
+        return None, None
+
+    if len(parts) <= solver_index:
+        return None, None
+
+    solver = parts[solver_index]
+
+    # Preferred layout: <root>/<solver>/<formulation>/solution_*.csv
+    if len(parts) > solver_index + 2:
+        return solver, parts[solver_index + 1]
+
+    # Fallback for flat outputs written directly under <root>/<solver>/.
+    filename = parts[-1].lower()
+    if "nooverlapoptional" in filename:
+        return solver, "nooverlapOptional"
+    if "cumulativeoptional" in filename:
+        return solver, "cumulativeOptional"
+    if "nooverlap" in filename:
+        return solver, "nooverlap"
+    if "cumulative" in filename:
+        return solver, "cumulative"
+
+    return solver, "unknown"
+
 results = []
-files = glob.glob("data/cp_model_results/**/solution_data_training_2_*.csv", recursive=True)
+files = sorted({
+    f
+    for pattern in RESULT_PATTERNS
+    for f in glob.glob(pattern, recursive=True)
+})
 
 for f in files:
-    parts = f.split(os.sep)
-    if len(parts) < 4: continue
-    
-    solver = parts[2]
-    constraint = parts[3]
-    filename = parts[-1]
+    solver, constraint = infer_solver_and_constraint(f)
+    if solver is None or constraint is None:
+        continue
+
+    filename = os.path.basename(f)
     
     try:
         name_parts = filename.split('_')
@@ -69,8 +108,18 @@ if not df_results.empty:
     # Color palette chosen with different luminance, plus redundant
     # markers/dashes so the lines remain distinct in grayscale.
     palette = {"gurobi": "#004488", "ortools": "#E69F00"}
-    markers = {"cumulative": "o", "nooverlap": "s"}
-    dashes = {"cumulative": "", "nooverlap": (4, 2)}
+    markers = {
+        "cumulative": "o",
+        "cumulativeOptional": "^",
+        "nooverlap": "s",
+        "nooverlapOptional": "D",
+    }
+    dashes = {
+        "cumulative": "",
+        "cumulativeOptional": (1, 1),
+        "nooverlap": (4, 2),
+        "nooverlapOptional": (6, 2, 1, 2),
+    }
     
     sns.lineplot(data=df_results.sort_values('no_of_items'), 
                  x='no_of_items', y='avg_par2', 
@@ -99,9 +148,18 @@ if not df_results.empty:
         'gurobi': 'Gurobi',
         'ortools': 'Ortools',
         'cumulative': 'Cumulative',
-        'nooverlap': 'NoOverlap'
+        'cumulativeOptional': 'CumulativeOptional',
+        'nooverlap': 'NoOverlap',
+        'nooverlapOptional': 'NoOverlapOptional'
     }
-    desired_order = ['Gurobi', 'Ortools', 'Cumulative', 'NoOverlap']
+    desired_order = [
+        'Gurobi',
+        'Ortools',
+        'Cumulative',
+        'CumulativeOptional',
+        'NoOverlap',
+        'NoOverlapOptional',
+    ]
     
     label_to_handle = {mapping[l]: h for h, l in zip(handles, labels) if l in mapping}
     filtered_handles = [label_to_handle[l] for l in desired_order if l in label_to_handle]
@@ -115,7 +173,8 @@ if not df_results.empty:
     
     plt.tight_layout()
     
-    output_path = 'results/RQ12.png'
+    output_path = 'results/RQ11.png'
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     plt.savefig(output_path, dpi=300)
     print(f"Plot saved to {output_path}")
 else:
