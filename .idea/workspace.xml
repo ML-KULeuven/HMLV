@@ -4,69 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="81911509-8764-42ad-8cce-bf52b6eead66" name="Changes" comment="Fixed small bug -- now rerun new exp.">
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_1_1_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_1_2_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_1_3_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_1_4_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_1_5_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_2_1_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_2_2_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_2_3_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_2_4_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/cumulative/solution_data_training_2_5_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_1_1_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_1_2_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_1_3_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_1_4_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_1_5_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_2_1_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_2_2_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_2_3_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_2_4_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/nooverlap/solution_data_training_2_5_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_1_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_1_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_2_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_2_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_3_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_3_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_4_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_4_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_5_gurobi_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/gurobi/solution_data_training_3_5_gurobi_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_1_1_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_1_2_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_1_3_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_1_4_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_1_5_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_2_1_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_2_2_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_2_3_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_2_4_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/cumulative/solution_data_training_2_5_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_1_1_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_1_2_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_1_3_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_1_4_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_1_5_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_2_1_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_2_2_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_2_3_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_2_4_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/nooverlap/solution_data_training_2_5_ortools_nosym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_1_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_1_ortools_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_2_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_2_ortools_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_3_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_3_ortools_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_4_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_4_ortools_sym_lb_nooverlap.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_5_ortools_sym_lb_cumulative.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/cp_model_results/ortools/solution_data_training_3_5_ortools_sym_lb_nooverlap.csv" beforeDir="false" />
-    </list>
+    <list default="true" id="81911509-8764-42ad-8cce-bf52b6eead66" name="Changes" comment="Fixed small bug -- now rerun new exp." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -200,7 +138,7 @@
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
     "ai.playground.ignore.import.keys.banner.in.settings": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "master",
     "last_opened_file_path": "/home/fosco/PycharmProjects/Manufacturing_Floor/results",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -880,7 +818,7 @@
       <workItem from="1777533279983" duration="835000" />
       <workItem from="1777883267079" duration="73000" />
       <workItem from="1778140261285" duration="906000" />
-      <workItem from="1778151543103" duration="9759000" />
+      <workItem from="1778151543103" duration="10061000" />
     </task>
     <task id="LOCAL-00001" summary="Fixed small bug -- now rerun new exp.">
       <option name="closed" value="true" />
