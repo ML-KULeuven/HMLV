@@ -1,0 +1,759 @@
+import math
+import bisect
+import shutil
+from collections import defaultdict
+from datetime import datetime
+
+import pandas as pd
+from IPython.core.profileapp import list_profiles_in
+from decorator import append
+
+import cpmpy as cp
+from cpmpy import Model, SolverLookup
+from cpmpy.exceptions import NotSupportedError
+from cpmpy.solvers import CPM_ortools
+from cpmpy.solvers.solver_interface import SolverInterface, ExitStatus
+import time
+import csv
+import os
+import json
+from pathlib import Path
+import matplotlib.pyplot as plt
+import numpy as np
+
+from cpmpy.tools import GridSearchTuner, ParameterTuner
+from utils.costant import FLASHLIGHT_CLIPPED, FLASHLIGHT_SCREWS
+from utils.utility import ensure_directory_exists
+
+
+class Tester:
+
+    def __init__(self, problems, timeout, each, append=False):
+        """
+        problems: list of [label, list_of_problem_instances]
+        timeout:  solver timeout
+        each:     number of runs per instance
+        """
+        self.problems = problems
+        self.timeout = timeout
+        self.each = each
+        self.append = append
+
+        self.dataframes = dict()
+        self.objective_cache = defaultdict(list)
+
+    def test(self):
+        """
+        Iterate over all problems.
+
+        For each label, iterate over its instances and solve each instance
+        `self.each` times. Save one CSV per label with columns:
+
+            instance, run, elapsed, status, makespan, lb
+        """
+        for csv_label, instance_list in self.problems:
+
+            rows = []
+
+            for inst_idx, (fname, problem) in enumerate(instance_list, start=1):
+                for run_idx in range(1, self.each + 1):
+                    elapsed, status, makespan, lb = self._test_problem(problem)
+                    print(f'Solved {fname} with {csv_label}')
+                    rows.append({
+                        "type": fname,  # <-- row label = JSON filename
+                        "instance": inst_idx,
+                        "run": run_idx,
+                        "elapsed": elapsed,
+                        "status": status,
+                        "makespan": makespan,
+                        "lb": lb,
+                    })
+
+            df = pd.DataFrame(rows)
+            self.dataframes[csv_label] = df  # filename label
+            self.save_all_dataframes()
+
+    def _test_problem(self, problem):
+        """Build and solve a problem instance, returning raw run data."""
+        problem.make_model()
+        elapsed, status, makespan, lb = problem.solve(
+            solver="ortools",
+            timeout=self.timeout
+        )
+        return elapsed, status, makespan, lb
+
+    def save_all_dataframes(self, output_dir="results"):
+        os.makedirs(output_dir, exist_ok=True)
+        for label, df in self.dataframes.items():
+            safe_label = label.replace(" ", "_").replace("(", "").replace(")", "")
+            path = os.path.join(output_dir, f"{safe_label}.csv")
+            df.to_csv(path, index=False)
+            print(f"Saved: {path}")
+
+    @staticmethod
+    def plot_from_csv(csv_filepath, output_dir="results", filename="comparison_plot_from_csv.png",
+                     figsize=(12, 8), bar_width=0.35):
+        """
+        Create a bar chart comparison plot from a previously saved CSV file.
+
+        Args:
+            csv_filepath (str): Path to the CSV file to read
+            output_dir (str): Directory to save the plot (default: "results")
+            filename (str): Name of the plot file (default: "comparison_plot_from_csv.png")
+            figsize (tuple): Figure size (width, height) in inches (default: (12, 8))
+            bar_width (float): Width of the bars (default: 0.35)
+        """
+        # Create output directory if it doesn't exist
+        ensure_directory_exists(output_dir)
+
+        # Read CSV data
+        items = []
+        time_sym = []
+        time_no_sym = []
+
+        try:
+            with open(csv_filepath, 'r', newline='', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    items.append(int(row['number_of_items']))
+                    # Handle empty values
+                    time_sym.append(float(row['time_symmetries']) if row['time_symmetries'] else None)
+                    time_no_sym.append(float(row['time_no_symmetries']) if row['time_no_symmetries'] else None)
+        except FileNotFoundError:
+            print(f"Error: CSV file not found at {csv_filepath}")
+            return None
+        except Exception as e:
+            print(f"Error reading CSV file: {e}")
+            return None
+
+        # Create figure and axis
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Set up bar positions using actual item values
+        x = np.array(items)
+
+        # Create bars
+        bars1 = ax.bar(x - bar_width/2, time_sym, bar_width,
+                      label='With Symmetries', alpha=0.8, color='skyblue')
+        bars2 = ax.bar(x + bar_width/2, time_no_sym, bar_width,
+                      label='Without Symmetries', alpha=0.8, color='lightcoral')
+
+        # Customize the plot
+        ax.set_xlabel('Number of Items', fontsize=12)
+        ax.set_ylabel('Solving Time (seconds)', fontsize=12)
+        ax.set_title('Symmetries vs No-Symmetries Solving Time Comparison', fontsize=14, fontweight='bold')
+        ax.set_xticks(x)
+        ax.set_xticklabels(items)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Add value labels on bars
+        def add_value_labels(bars):
+            for bar in bars:
+                if bar.get_height() is not None:
+                    height = bar.get_height()
+                    ax.annotate(f'{height:.2f}',
+                              xy=(bar.get_x() + bar.get_width() / 2, height),
+                              xytext=(0, 3),  # 3 points vertical offset
+                              textcoords="offset points",
+                              ha='center', va='bottom', fontsize=8)
+
+        add_value_labels(bars1)
+        add_value_labels(bars2)
+
+        # Adjust layout to prevent label cutoff
+        plt.tight_layout()
+
+        # Save the plot
+        filepath = os.path.join(output_dir, filename)
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        print(f"Comparison plot from CSV saved to: {filepath}")
+
+        # Show the plot
+        plt.show()
+
+        return filepath
+
+# class BatchTuner:
+#
+#     def __init__(self,params,default_vals):
+#         self.list_problems = []
+#         self.params = params
+#         self.default_vals = default_vals
+#
+#     def add_problem(self,problem):
+#         print("Adding problem", type(problem), len(problem.constraints))
+#         self.list_problems.append(problem)
+#
+#     def tune(self, max_tries=100, grid=False, time_limit=3600, verbose=1):
+#         # print("Warning: only using first problem")
+#         if grid:
+#             print(f"Running GridSearchTuner for {max_tries} tries, time_limit {time_limit}")
+#             tuner_grid = GridSearchTuner("ortools", self.list_problems, all_params=self.params, defaults=self.default_vals)
+#             best_param = tuner_grid.tune(max_tries=max_tries, time_limit=time_limit)
+#         else:
+#             print(f"Running ParameterTuner for {max_tries} tries, time_limit {time_limit}")
+#             import cpmpy.tools
+#             print(cpmpy.tools.__file__)
+#             tuner_param = ParameterTuner("ortools", self.list_problems, all_params=self.params, defaults=self.default_vals)
+#             best_param = tuner_param.tune(max_tries=max_tries, time_limit=time_limit) #, verbose=verbose) # 'verbose' not upstream yet
+#         print("Found parameters:", best_param)
+#         self.save_best_params(best_param)
+#
+#     def save_best_params(self, best_params, output_dir="results", filename="best_tuning_params.json"):
+#         """
+#         Save the best tuning parameters to a JSON file.
+#
+#         Args:
+#             best_params (dict): Dictionary containing the best tuning parameters
+#             output_dir (str): Directory to save the JSON file (default: "results")
+#             filename (str): Name of the JSON file (default: "best_tuning_params.json")
+#         """
+#         # Create output directory if it doesn't exist
+#         ensure_directory_exists(output_dir)
+#
+#         # Write to JSON file
+#         filepath = os.path.join(output_dir, filename)
+#         # Convert all numpy.int64 -> Python int
+#         clean_params = {k: int(v) if isinstance(v, np.integer) else v
+#                         for k, v in best_params.items()}
+#
+#         with open(filepath, 'w', encoding='utf-8') as jsonfile:
+#             json.dump(clean_params, jsonfile, indent=2, ensure_ascii=False)
+#
+#         print(f"Best tuning parameters saved to: {filepath}")
+#         return filepath
+
+class FWI:
+
+    def __init__(self, jobshop, top_k, solutions_table=None,
+                 solutions_storage=None, solution_counter=None):
+        self.model = jobshop.m
+        self.variables = jobshop.variables
+        self.jobshop = jobshop
+        self.top_k = top_k
+        self.objectives_names = self.jobshop.objectives_names
+        self.default_values = jobshop.default_values
+        self.default_batches = self.create_batches_weights(self.default_values,
+                                                      [self.variables[name] for name in self.objectives_names])
+        
+        # App integration
+        self.solutions_table = solutions_table
+        self.solutions_storage = solutions_storage
+        self.solution_counter = solution_counter
+
+    def generate_solution_id(self):
+        """Generate a unique solution ID"""
+        if self.solution_counter is not None:
+            self.solution_counter[0] += 1
+            return f"{self.solution_counter[0]:03d}"
+        return "FWI_001"
+
+    def save_solution_images(self, solution_id):
+        """Save topology and solution images with solution ID"""
+        if not self.jobshop:
+            return None, None
+            
+        # Create solutions directory if it doesn't exist
+        solutions_dir = "./solutions"
+        os.makedirs(solutions_dir, exist_ok=True)
+        
+        # Copy topology image
+        topology_src = "./images/topology.jpg"
+        topology_dst = f"{solutions_dir}/topology_{solution_id}.jpg"
+        if os.path.exists(topology_src):
+            shutil.copy2(topology_src, topology_dst)
+        
+        # Copy solution image
+        solution_src = "./images/sol.jpg"
+        solution_dst = f"{solutions_dir}/solution_{solution_id}.jpg"
+        if os.path.exists(solution_src):
+            shutil.copy2(solution_src, solution_dst)
+        
+        return topology_dst, solution_dst
+
+    def store_solution_data(self, solution_id, makespan, resources,conv_belts,employees, robots, topology_path, solution_path):
+        """Store solution data with associated image paths"""
+        if self.solutions_storage is not None:
+            self.solutions_storage[solution_id] = {
+                'id': solution_id,
+                'makespan': makespan,
+                'resources': resources,
+                'conv_belts': conv_belts,
+                'employees': employees,
+                'robots': robots,
+                'topology_path': topology_path,
+                'solution_path': solution_path,
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+
+    def add_solution_to_table(self, solution_id, makespan, resources,trasnport, employees, robots):
+        """Add a new solution to the table (thread-safe)"""
+        if self.solutions_table is not None:
+            try:
+                print(f"FWI: Adding solution to table: {solution_id}, {makespan}, {resources}, {trasnport}, {employees}, {robots}")
+                # Use after() to schedule the table update on the main thread
+                self.solutions_table.after(0, lambda: self.solutions_table.insert("", "end", values=(solution_id, makespan, resources, trasnport, employees, robots)))
+                print("FWI: Successfully scheduled solution for table")
+            except Exception as e:
+                print(f"FWI: Error adding solution to table: {e}")
+
+    def create_batches_weights(self,default_value, objectives):
+        batch_weights = []
+        times = math.floor((len(objectives)) / len(default_value))
+        for i in range(times):
+            batch_weights.append(default_value)
+        remaining = ((len(objectives)) % len(default_value))
+        if remaining > 0:
+            batch_weights.append(default_value[-remaining:])
+        return batch_weights
+
+    def start_fwi(self):
+        objectives = [self.variables[name] for name in self.objectives_names]
+        #solve the problem one time
+
+        
+        #if self.model.solve():
+        if self.general_solve(self.model, self.default_batches, objectives,[], store_solution=True):
+            non_dominated_solution = [objective.value() for objective in objectives]
+            non_dominated_solutions = [non_dominated_solution]
+            depth = -1
+            to_fix = [objectives[i].value() for i in range(len(objectives) - 2)]    #generate a list containing the value
+                                                                                    # than can be fixed
+
+            non_dominated_solutions, to_continue = self.fwi_method(self.model, objectives,
+                                                                   self.variables,non_dominated_solution,
+                                                                   non_dominated_solutions,depth,
+                                                                   to_fix, self.top_k)
+
+
+    def general_solve(self,model,batches_weights,objectives,new_constraints, store_solution=False):
+        counter = 0
+        constraints = []
+        model_ortools = SolverLookup.get('ortools', model)
+        for cons in new_constraints:
+            model_ortools += cons
+        for i in range(len(batches_weights)):
+            batch = batches_weights[i]
+            obj = np.sum(np.array(batch) * np.array(objectives[counter:(len(batch) + counter)]))
+            model_ortools.minimize(obj)
+            if model_ortools.solve():
+                for obj in objectives[counter:(len(batch) + counter)]:
+                    constraints.append(obj == obj.value())
+                model_ortools += constraints
+                counter += len(batch)
+            else:
+                return False
+        
+        # If this is a new solution and we should store it
+        if store_solution and self.jobshop:
+            self._store_new_solution()
+        
+        return True
+
+    def _store_new_solution(self):
+        """Store a new solution found by FWI"""
+        try:
+            # Generate solution ID
+            solution_id = self.generate_solution_id()
+            
+            # Create Gantt chart for this solution
+            if self.jobshop and hasattr(self.jobshop, 'make_gantt'):
+                try:
+                    self.jobshop.make_gantt(folder="./images/sol.jpg")
+                    self.jobshop.make_ws_updated(location="./images/topology.jpg")
+                except Exception as e:
+                    print(f"FWI: Error creating Gantt chart: {e}")
+            
+            # Save images
+            topology_path, solution_path = self.save_solution_images(solution_id)
+            
+            # Get solution data
+            makespan = None
+            if hasattr(self.jobshop, "makespan") and getattr(self.jobshop.makespan, "value", None):
+                try:
+                    v = self.jobshop.makespan.value()
+                    makespan = int(v) if v is not None else None
+                except Exception:
+                    makespan = None
+            
+            ms_text = str(makespan) if makespan is not None else "-"
+            
+            # Get resource data (you may need to adapt this based on your problem structure)
+            resources = 0
+            employees = 0
+            robots = 0
+            transport = 0
+            
+            try:
+                if hasattr(self.jobshop, "resource_count"):
+                    resources = self.jobshop.resource_count.value() if hasattr(self.jobshop.resource_count, 'value') else 0
+                if hasattr(self.jobshop, "humans_used"):
+                    employees = int(self.jobshop.humans_used.value()) if hasattr(self.jobshop.humans_used, 'value') else 0
+                if hasattr(self.jobshop, "robot_used"):
+                    robots = int(self.jobshop.robot_used.value()) if hasattr(self.jobshop.robot_used, 'value') else 0
+                if hasattr(self.jobshop, "robot_used"):
+                    robots = int(self.jobshop.robot_used.value()) if hasattr(self.jobshop.robot_used, 'value') else 0
+                if hasattr(self.jobshop, "tr_count"):
+                    transport = int(self.jobshop.tr_count.value()) if hasattr(self.jobshop.tr_count, 'value') else 0
+            except Exception as e:
+                print(f"FWI: Error getting resource data: {e}")
+            
+            # Store solution data
+            self.store_solution_data(solution_id, ms_text, resources,transport,
+                                     employees, robots, topology_path, solution_path)
+            
+            # Add to table
+            self.add_solution_to_table(solution_id, ms_text, resources,transport, employees, robots)
+            
+            print(f"FWI: Stored new solution {solution_id}")
+            
+        except Exception as e:
+            print(f"FWI: Error storing new solution: {e}")
+
+
+    def fwi_method(self, model, objectives, variables, current_solution, non_dominated_solutions, depth, to_fix, top_k):
+        '''
+
+        Args:
+            cache_constraints: cache containing the constraints
+            objectives: list of the objectives ordered according to the preferences
+            current_solution: solution that I want to fix, worsen, improve
+            non_dominated_solutions: list of non-dominated solutions
+            depth: current level in the tree
+            to_fix: list of the objectives, containing the fixed values
+            top_k: int indicating how many solutions must be returned
+            weights: weights of the objectives
+
+        Returns:
+           non_dominated_solutions: list of non-dominated solutions
+        '''
+        depth +=1
+        #reach the lowest level of the tree
+        if depth < len(objectives) - 2:
+            non_dominated_solutions, to_continue = self.fwi_method(model, objectives, variables,
+                                                                   current_solution, non_dominated_solutions,
+                                                                   depth, to_fix, top_k)
+            if not to_continue:
+                return non_dominated_solutions, to_continue
+
+
+        table_1 = self.make_new_table(non_dominated_solutions, current_solution, depth)
+        table_worse_up_to = self.make_table_worse(table_1,current_solution[depth])
+        i=0
+        #iterate throughout the table
+        while len(non_dominated_solutions) < top_k and i<len(table_worse_up_to)-1:
+            new_constraints = []
+            clause_fix = []
+            for d in range(depth):
+                clause_fix.append(objectives[d] == to_fix[d])
+            clause_fix = cp.all(clause_fix)
+            new_constraints.append(clause_fix)
+
+            clause_fwi = []
+            #worsen the objective, >= if the fixed objective value for the solution in the table is <
+            fixed_values = [inner_list[-1] for inner_list in table_worse_up_to[i:]]
+            if any((current_solution[:depth] == fixed) for fixed in fixed_values):
+                clause_fwi.append(objectives[depth] >= table_worse_up_to[i][0])
+            else:
+                clause_fwi.append(objectives[depth] >= table_worse_up_to[i][0])
+            worse_up_to_index = self.find_next_worse_index(table_worse_up_to,i)
+            #the objective that I want to worsen, can be worsened up to...
+            clause_fwi.append(objectives[depth] < table_worse_up_to[worse_up_to_index][0])
+            new_constraints.append(cp.all(clause_fwi))
+            table_improve = self.make_table_improve(table_1, table_worse_up_to[i][0])
+            new_constraints.append(self.make_clause_fwi(objectives, depth, table_improve))
+            batch_weights = self.create_batches_weights(self.default_values, objectives[depth:])
+
+
+            if self.general_solve(model, batch_weights, objectives[depth:],
+                                  new_constraints, store_solution=True):
+                if depth < len(objectives) - 2:
+                    for k in range(depth, len(objectives) - 2):
+                        to_fix[k] = objectives[k].value()
+                non_dominated_solution = [objective.value() for objective in objectives]
+                non_dominated_solutions.append(non_dominated_solution)
+                current_solution = non_dominated_solution
+
+                if depth < len(objectives) - 2:
+                    #if I am not in the lowest level, reach it
+                    non_dominated_solutions, to_continue = self.fwi_method(model, objectives,
+                                                                                       variables,current_solution,
+                                                                                       non_dominated_solutions,depth,
+                                                                                       to_fix, top_k)
+                    if not to_continue:
+                        return non_dominated_solutions, to_continue
+
+                table_1 = self.make_new_table(non_dominated_solutions, current_solution, depth)
+                table_worse_up_to = self.make_table_worse(table_1,current_solution[depth])
+                i=0
+            else:
+                #if it is not unsatisfiable, skip solutions until the 'worse up to' one
+                i=worse_up_to_index
+        return non_dominated_solutions, True
+
+    def make_clause_fwi(self, objectives, depth, table_2):
+        '''
+
+        Args:
+            objectives: list of the objectives, ordered accoring preferences
+            depth: current level of the tree
+            table_2: table improving, generated by make_table_improve
+
+        Returns:
+            clause_fwi: clause for improving objectives (now the disjunctive method is used)
+        '''
+        clause_fwi = self.make_classic_disjunction(table_2, objectives[depth + 1:])
+        return clause_fwi
+
+
+
+    def make_classic_disjunction(self, table,objectives):
+        '''
+
+        Args:
+            table: table_improve
+            objectives:
+
+        Returns:
+            disjunction_classic: conjunction of disjunction (disjunctive method)
+        '''
+        disjunction_classic = []
+        for row in table:
+            part_disjunction = []
+            for index_obj in range(len(objectives)):
+                part_disjunction.append(objectives[index_obj] < row[index_obj])
+            disjunction_classic.append(cp.any(part_disjunction))
+        return cp.all(disjunction_classic)
+
+    def make_table_worse(self, table,value):
+        '''
+
+        Args:
+            table: table containing solutions with only the worsening part and the improving part,
+                   plus the value of the objectives for the fixed part
+            value: value of the objective that I want to worsen
+
+        Returns:
+            worse_up_to: table containing only the objective that we want to worsen,
+                         plus the value of the objective for the fixed part
+
+        '''
+        column = [[el[0],el[-1]] for el in table]
+        #added infinity at the end
+        column.append([int(1e10),[]])
+        #the table will contain only the values that are worsen wrt to value, since the table is already ordered,
+        #I just need to get the rows after value
+        column_for_index = [el[0] for el in table]
+        worse_up_to = column[column_for_index.index(value):]
+        return worse_up_to
+
+    def find_next_worse_index(self, table,i):
+        '''
+
+        Args:
+            table: table for worsening part
+            i: current position in the table
+        Returns:
+            index_worse_up_to: index pointing the next worse value
+                               ex: [15,15,15,20,infinity], if i = 0, index_worse_up_to = 3
+        '''
+        for index in range(i+1,len(table)):
+            if table[index][0]!=table[i][0]:
+                index_worse_up_to = index
+                break
+        return index_worse_up_to
+
+    def make_new_table(self, solutions, current_sol, depth):
+        '''
+        Args:
+            solutions: list containing all the non-dominated solutions
+            current_sol: solution that we want to fix-worse-improve
+            depth: current depth of the tree structure
+            weights: list of weights
+
+        Returns:
+            dominate_sols: list of solutions without the fixed part.
+                           At the end of each solution, there is also the objective value for the fixed part.
+                           2 filters are applied (in the following ordering):
+                                1: only the solution that dominate current_sol in the fixed part are added.
+                                    ex: [10 50] 20 40 [sol in solutions]\
+                                        [12 40] 30 100 [current_sol]
+                                        since [10 50] do not dominate [12 40] I am not going to add [20 40] in dominate_sols
+                                2: deleted dominated solutions by considering only the worsening part and the improving part
+                                    ex: [9 15]   20 30
+                                        [10 10]  30 40 [this will be deleted, is dominated by the first one,
+                                                        without considering the fixed part in brackets]
+        '''
+        dominate_sols = []
+        for sol in solutions:
+                # find all solution that dominate current_sol in the fixed part, these will be put, first filtering
+                if not any(current_sol[i] < sol[i] for i in range(depth)):
+                    row = sol[depth:]
+                    if depth == 0:
+                        #if i am in the fist level of the tree, I do not have any fixed value
+                        obj_fixed = []
+                    else:
+                        obj_fixed = [sol[i] for i in range(depth)]
+                    #add as last element of the solution, the value of the objective for the fixed part
+                    row.append(obj_fixed)
+                    #add the solution in dominate_sols, ordered
+                    index = bisect.bisect_left(dominate_sols, row)
+                    dominate_sols.insert(index, row)
+                    i = index
+                    # delete all those solutions that are dominated, second filtering
+                    while i < len(dominate_sols) - 1:
+                        sol_1 = dominate_sols[i][:-1]
+                        sol_2 = dominate_sols[i + 1][:-1]
+                        if all(x <= y for x, y in zip(sol_1, sol_2)):
+                            dominate_sols.pop(i + 1)
+                            i -= 1
+                        i += 1
+        return dominate_sols
+
+    def make_table_improve(self, table, worsen):
+        '''
+
+        Args:
+            table: table from make_new table
+            worsen: starting value for worsening
+
+        Returns:
+            table_improve: the table improvement contains the value that we want to improve using the disjunctive method
+                           the solutions that are considered are those that have a better or equal value wrt worsen
+                           1 filtering is applied
+                                1: deleted dominated solutions by considering only the improving part
+
+        '''
+        table_improve = []
+        for sol in table:
+            #I take those solutions that have a better or equal value for the worsening part wrt worsen
+            if sol[0] <= worsen:
+                #add only the part that we want to improve, deleted worsening part and fixed objective value
+                table_improve.append(sol[1:-1])
+        table_improve.sort()
+        i = 0
+        while i < len(table_improve) - 1:
+            #delete dominated solutions by considering the improving part
+            sol_1 = table_improve[i]
+            sol_2 = table_improve[i + 1]
+            if all(x <= y for x, y in zip(sol_1, sol_2)):
+                table_improve.pop(i + 1)
+                i -= 1
+            i += 1
+        return table_improve
+
+
+
+    def make_dictionary_from_table(self, table):
+        dictionary = {}
+        if len(table[0])==1:
+            dictionary = table[0][0] #there only one element
+        else:
+            for inner_list in table:
+                current_dict = dictionary
+                for i, value in enumerate(inner_list):
+                    if i == len(inner_list) - 2:
+                        if value not in current_dict:
+                            current_dict[value] = inner_list[-1]
+                        break
+                    else:
+                        if value not in current_dict:
+                            current_dict[value] = {}
+                        current_dict = current_dict[value]
+        return dictionary
+
+class Oracle:
+    def __init__(self,weights,objectives,lbda_indif=1,optimal_sol=None):
+        self.lbda_indif = lbda_indif
+        self.dict_feature_weights = dict(zip(objectives, weights))
+        self.optimal_sol = optimal_sol
+
+    def query_bounds(self, image):
+        bounds = {}
+
+        selected, probabilities = self.index_improvement(image)  # unpack
+
+        # # 10% random exploration: replace selected with random indices of same size
+        # if np.random.rand() < 0.1:
+        #     n_total = len(self.dict_feature_weights)
+        #     k = len(selected)
+        #     selected = np.random.choice(n_total, size=k, replace=False)
+
+        features = list(self.dict_feature_weights.keys())
+
+        for idx in range(len(self.dict_feature_weights.keys())):
+            f = features[int(idx)]  # map index -> feature name
+            if idx in selected:
+                cur = float(image[f])
+                opt = float(self.optimal_sol[f])
+
+                gap = cur - opt
+                new_val = cur - 0.05 * gap - 1e-4 # move frac toward optimal
+
+                bounds[f] = new_val  # directional bound (can be decreasing)
+            else:
+                bounds[f] = None
+
+        return bounds
+
+
+    def index_improvement(self, image):
+
+        utilities = np.array([
+            -self.lbda_indif * self.dict_feature_weights[f] *
+            abs(image[f] - self.optimal_sol[f])
+            for f in self.dict_feature_weights
+        ])
+
+        utilities = np.clip(utilities, -700, 700)
+
+        p0 = 0.1  # probability when utility = 0
+        bias = np.log(p0 / (1 - p0))
+
+        probabilities = 1.0 / (1.0 + np.exp(utilities - bias))
+
+        selected = np.where(
+            np.random.rand(len(probabilities)) < probabilities
+        )[0]
+
+        return selected, probabilities
+
+    def label(self,query):
+        utility_pairs = []
+        for sol in query:
+            utility = 0
+            for feature in self.dict_feature_weights:
+                utility += self.dict_feature_weights[feature]*sol[feature]
+            utility_pairs.append(-utility)
+        # Determine objectively preferred based on raw utility (lower negated utility is better)
+        if utility_pairs[0] > utility_pairs[1]:
+            obj_preferred_idx = 0
+        elif utility_pairs[1] > utility_pairs[0]:
+            obj_preferred_idx = 1
+        else:
+            obj_preferred_idx = -1 # Indicate objective indifference
+
+        picked = self.bt_pba(utility_pairs[0], utility_pairs[1])
+        return picked,query[0],utility_pairs[0],query[1],utility_pairs[1], obj_preferred_idx
+
+    def bt_pba(self, util1, util2):
+        """
+        Given the utility of two solutions,
+        return the proba the solution 1 is prefered and the proba of indifference
+        based on Bradley-Terry model.
+        """
+        clipped_val_1 = np.clip(-self.lbda_indif * abs(util1 - util2), -700, 700)
+        pba_indif = math.exp(clipped_val_1)
+        print(f'Probabilities of missing {pba_indif} given {util1} and {util2}')
+        if np.random.choice([0, 1], p=[pba_indif, 1 - pba_indif]) == 0:
+            return -1
+        else:
+            utils = np.array([util1, util2])
+            best = np.argmax(utils)
+            worst = 1 - best
+            if np.random.rand() <= 0.1:
+                return worst
+            else:
+                return best
+

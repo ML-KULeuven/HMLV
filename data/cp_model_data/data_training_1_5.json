@@ -1,0 +1,181 @@
+{
+    "transports_required": true,
+    "orderbook": {
+        "clipped": {
+            "sequence": ["K1", "T", "B1", "T", "P"],
+            "volume": 5
+        },
+        "complex": {
+            "sequence": ["K1", "K2", "T", "B1", "T", "P"],
+            "volume": 5
+        },
+        "screwed": {
+            "sequence": ["K1", "T", "K2", "T","B1", "T", "B2", "T", "P"],
+            "volume": 5
+        },
+        "duplo": {
+            "sequence": ["B3", "T", "P"],
+            "volume": 5
+        }
+    },
+    "resources": {
+        "workstations": {
+            "kit-1": {
+                "type": "kit",
+                "human": false,
+                "durations": {
+                    "K1": 1060
+                }
+            },
+            "kit-2": {
+                "type": "kit",
+                "human": false,
+                "durations": {
+                    "K1": 1060
+                }
+            },
+            "grip-1": {
+                "type": "grip",
+                "human": false,
+                "durations": {
+                    "B1": 440
+                }
+            },
+            "grip-2": {
+                "type": "grip & screw",
+                "human": false,
+                "durations": {
+                    "B1": 600,
+                    "B2": 200
+                }
+            },
+            "grip-3": {
+                "type": "arm",
+                "human": false,
+                "durations": {
+                    "B3": 800
+                }
+            },
+            "pack-1": {
+                "type": "pack",
+                "human": false,
+                "durations": {
+                    "P": 60
+                }
+            }
+        },
+        "operators": {
+            "o-1": {
+                "type": "operator",
+                "skill": 3,
+                "durations": {
+                    "K1": 64,
+                    "K2": 20,
+                    "B1": 364,
+                    "B2": 192,
+                    "B3": 200,
+                    "P": 40,
+                    "T": 12
+                }
+            },
+            "o-2": {
+                "type": "operator",
+                "skill": 3,
+                "durations": {
+                    "K1": 64,
+                    "K2": 20,
+                    "B1": 364,
+                    "B2": 192,
+                    "B3": 200,
+                    "P": 40,
+                    "T": 12
+                }
+            },
+            "o-3": {
+                "type": "operator",
+                "skill": 3,
+                "durations": {
+                    "K1": 64,
+                    "K2": 20,
+                    "B1": 364,
+                    "B2": 192,
+                    "B3": 200,
+                    "P": 40,
+                    "T": 12
+                }
+            }
+        },
+        "mobile_robots": {
+            "r-1": {
+                "type": "mobile_robot",
+                "durations": {
+                    "T": 20
+                }
+            },
+            "r-2": {
+                "type": "mobile_robot",
+                "durations": {
+                    "T": 20
+                }
+            },
+            "r-3": {
+                "type": "mobile_robot",
+                "durations": {
+                    "T": 20
+                }
+            }
+        },
+        "conveyor_belts": {
+            "c-1": {
+                "type": "conveyor",
+                "from": "kit-1",
+                "to": "grip-1",
+                "durations": {
+                    "T": 4
+                }
+            },
+            "c-2": {
+                "type": "conveyor",
+                "from": "grip-2",
+                "to": "pack-1",
+                "durations": {
+                    "T": 4
+                }
+            },
+            "c-3": {
+                "type": "conveyor",
+                "from": "grip-1",
+                "to": "grip-2",
+                "durations": {
+                    "T": 4
+                }
+            }
+        },
+        "ws-human": {
+            "kit-human-1": {
+                "type": "kit",
+                "human": true,
+                "supported": {
+                    "K1": true,
+                    "K2": true
+                }
+            },
+            "build-human-1": {
+                "type": "build",
+                "human": true,
+                "supported": {
+                    "B1": true,
+                    "B2": true,
+                    "B3": true
+                }
+            },
+            "pack-human-1": {
+                "type": "build",
+                "human": true,
+                "supported": {
+                    "P": true
+                }
+            }
+        }
+    }
+}

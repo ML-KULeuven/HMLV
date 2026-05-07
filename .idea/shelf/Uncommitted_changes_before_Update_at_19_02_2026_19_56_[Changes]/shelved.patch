@@ -1,0 +1,66 @@
+Index: 3.txt
+===================================================================
+diff --git a/3.txt b/3.txt
+deleted file mode 100644
+--- a/3.txt	(revision b856aba6d058ef83d3c4fccf7aa9f7ad0ec7aa96)
++++ /dev/null	(revision b856aba6d058ef83d3c4fccf7aa9f7ad0ec7aa96)
+@@ -1,12 +0,0 @@
+-nohup: ignoring input
+-Initializing the Job Shop model...
+-Model initialized.
+-===== Starting Tuning for Normalization Method: custom =====
+-Loading nadir values from data/normalization/data_training_nadir_maximization.csv...
+-Nadir and optimal values loaded successfully.
+---- Running for lr=1, disjunctive=True, normalization=custom, diversification=UCB, c_ucb=2 ---
+-Starting CPE process. Results will be saved in tuning_results/user_1/norm_custom/div_UCB/c_2/lr_1/dis_True
+-
+-Labelling progress:   0%|          | 0/80 [00:00<?, ?it/s]
+-Labelling progress:   1%|▏         | 1/80 [00:00<01:16,  1.03it/s]
+-Labelling progress:   2%|▎         | 2/80 [00:31<23:45, 18.27s/it]
+\ No newline at end of file
+Index: run_cp.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>\nimport argparse\nimport pandas as pd\nimport os\n\nfrom utils.CPE import CPE\nfrom utils.utility_classes import Oracle\nfrom utils.jobshop_model_final import FJTransportProblemFinal\n\n\ndef main():\n    parser = argparse.ArgumentParser(description=\"Hyperparameter tuning for CPE.\")\n    parser.add_argument(\"-n\",\"--normalization\", type=str, choices=['base', 'custom'], default='base',\n                        help=\"Normalization method: 'base' or 'custom'.\")\n    parser.add_argument(\"-d\",\"--diversification\", type=str, choices=['base', 'UCB'], default='base',\n                        help=\"Diversification method: 'base', or 'UCB'.\")\n    parser.add_argument(\"-c\",\"--disjunctive\", type=lambda x: str(x).lower() == 'true', default=True,\n                        help=\"Whether to use disjunctive constraints (True/False).\")\n    args = parser.parse_args()\n\n\n    for user_index in range(5,15): # Loop over user indices for tuning\n        # --- Search space ---\n        objectives = ['makespan', 'workstations', 'employees', 'robots', 'employee_time']\n\n        # --- Read user preferences ---\n        try:\n            user_prefs_df = pd.read_csv('data/user_preferences.csv')\n            user_weights_series = user_prefs_df.iloc[user_index]\n            # Map preference columns to objective names\n            user_weights = {obj: user_weights_series[obj] for obj in objectives}\n        except (FileNotFoundError, IndexError):\n            print(f\"Error: Could not read user preferences for index {user_index}.\")\n            print(\"Please ensure 'data/user_preferences.csv' exists and the index is valid.\")\n            return\n\n        # --- Read preferred solution from solution_training.csv ---\n        try:\n            solution_training_df = pd.read_csv('data/solution_training.csv')\n            # Assuming each row in solution_training_df corresponds to a user_index\n            # and 'objectives' column contains the preferred solution as a string dictionary\n            preferred_solution_str = solution_training_df.iloc[user_index]['objectives']\n            import ast\n            preferred_solution = ast.literal_eval(preferred_solution_str)\n        except (FileNotFoundError, IndexError, ValueError) as e:\n            print(f\"Error: Could not read preferred solution for index {user_index} from 'data/solution_training.csv'.\")\n            print(f\"Details: {e}\")\n            return\n\n        # --- Instantiate Model (once) ---\n        print(\"Initializing the Job Shop model...\")\n        model = FJTransportProblemFinal(\n            json_file='./data/data_training.json'\n        )\n        model.make_model()\n        print(\"Model initialized.\")\n\n        # --- Main tuning loop ---\n        results_root = 'results_CP'\n\n        # --- Determine Nadir filepath based on normalization argument ---\n        nadir_filepath = ''\n        nadir_method_name = args.normalization # Renaming for clarity in output paths\n        nadir_filepath = 'data/normalization/data_training_nadir_maximization.csv'\n\n\n        print(f\"===== Starting Tuning for Normalization Method: {nadir_method_name} =====\")\n\n        # --- Load Nadir and Optimal Points for the current method ---\n        print(f\"Loading nadir values from {nadir_filepath}...\")\n        optimal_df = pd.read_csv('data/normalization/data_training_optimal_values.csv')\n        nadir_df = pd.read_csv(nadir_filepath)\n\n        nadir_optimal_results_data = {}\n        for obj_name in objectives:\n            if obj_name in optimal_df.columns and obj_name in nadir_df.columns:\n                nadir_optimal_results_data[obj_name] = {\n                    'min': optimal_df[obj_name].iloc[0],\n                    'max': nadir_df[obj_name].iloc[0]\n                }\n            else:\n                raise ValueError(f\"Objective '{obj_name}' not found in optimal or nadir data.\")\n        print(\"Nadir and optimal values loaded successfully.\")\n\n        hyperparameter_norm_div_dis = {\n            'base': {\n                'base': {\n                    'False' : [1,2],\n                    'True': [10,2]\n                },\n                'UCB': {\n                    'True': [10,2]\n                }\n            },\n            'custom': {\n                'base': {\n                    'False': [1,2],\n                    'True': [1,2]\n                },\n                'UCB': {\n                    'True': [10,3]\n                }\n            }\n        }\n\n        # Use args.disjunctive directly, no inner loop\n        disjunctive = args.disjunctive\n        lr = hyperparameter_norm_div_dis[args.normalization][args.diversification][str(disjunctive)][0]\n        c_val = hyperparameter_norm_div_dis[args.normalization][args.diversification][str(disjunctive)][1]\n\n        print(f\"--- Running for lr={lr}, disjunctive={disjunctive}, normalization={args.normalization}, diversification={args.diversification}, c_ucb={c_val} ---\")\n\n        # --- Setup for the run ---\n        output_dir_parts = [results_root, f'user_{user_index}', f'norm_{args.normalization}', f'div_{args.diversification}']\n        if args.diversification == 'UCB':\n            output_dir_parts.append(f'c_{c_val}') # Add c_val to path for UCB\n        output_dir_parts.extend([f'lr_{lr}', f'dis_{disjunctive}'])\n        output_dir = os.path.join(*output_dir_parts)\n        os.makedirs(output_dir, exist_ok=True)\n\n        # --- Instantiate Oracle ---\n        oracle = Oracle(weights=list(user_weights.values()), objectives=objectives)\n\n        # --- Instantiate and run CPE ---\n        cpe = CPE(\n            model=model,\n            oracle=oracle,\n            objectives=objectives,\n            preferred=preferred_solution, # Passing the preferred solution\n            nadir_optimal_results=nadir_optimal_results_data,\n            output_location=output_dir,\n            lr=lr,\n            disjunctive=disjunctive,\n            normalization=args.normalization, # Pass the argparse value\n            diversification=args.diversification, # Pass the argparse value\n            c_ucb=c_val, # Pass the 'c' hyperparameter for UCB from the loop\n            max_data=80, # Using a reasonable default for tuning\n            time_eval=20\n        )\n\n        print(f\"Starting CPE process. Results will be saved in {output_dir}\")\n        cpe.start()\n        print(\"CPE process finished.\")\n\n        print(\"Hyperparameter tuning complete for all specified parameters.\")\n\nif __name__ == \"__main__\":\n    main()\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/run_cp.py b/run_cp.py
+--- a/run_cp.py	(revision b856aba6d058ef83d3c4fccf7aa9f7ad0ec7aa96)
++++ b/run_cp.py	(date 1771506367747)
+@@ -94,7 +94,7 @@
+             },
+             'custom': {
+                 'base': {
+-                    'False': [1,2],
++                    'False': [],
+                     'True': [1,2]
+                 },
+                 'UCB': {
+Index: aggregated_tuning_results.csv
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>method,0.1,1.0,10.0\nnorm_base|div_UCB|c_2|dis_True,0.7204 ± 0.5536,0.2803 ± 0.2631,0.1342 ± 0.1935      #Done\nnorm_base|div_UCB|c_3|dis_True,0.7204 ± 0.5536,0.2436 ± 0.2522,0.2476 ± 0.2524      #Done\nnorm_base|div_UCB|c_4|dis_True,0.7204 ± 0.5536,0.4345 ± 0.2829,0.2862 ± 0.2671      #Done\nnorm_base|div_base|N/A|dis_False,0.7204 ± 0.5536,0.5011 ± 0.1728,0.7204 ± 0.5536    #Done\nnorm_base|div_base|N/A|dis_True,0.7072 ± 0.5529,0.3609 ± 0.3056,0.3131 ± 0.2132     #Done\nnorm_custom|div_UCB|c_2|dis_True,0.2364 ± 0.2177,0.0014 ± 0.0032,0.0012 ± 0.0028\nnorm_custom|div_UCB|c_3|dis_True,0.2751 ± 0.2562,0.0012 ± 0.0028,0.0000 ± 0.0000\nnorm_custom|div_UCB|c_4|dis_True,0.3574 ± 0.2215,0.0000 ± 0.0000,0.0013 ± 0.0028\nnorm_custom|div_base|N/A|dis_True,0.2364 ± 0.2177,0.0012 ± 0.0028,0.1411 ± 0.3156\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/aggregated_tuning_results.csv b/aggregated_tuning_results.csv
+--- a/aggregated_tuning_results.csv	(revision b856aba6d058ef83d3c4fccf7aa9f7ad0ec7aa96)
++++ b/aggregated_tuning_results.csv	(date 1771506361369)
+@@ -1,10 +1,11 @@
+ method,0.1,1.0,10.0
+-norm_base|div_UCB|c_2|dis_True,0.7204 ± 0.5536,0.2803 ± 0.2631,0.1342 ± 0.1935      #Done
+-norm_base|div_UCB|c_3|dis_True,0.7204 ± 0.5536,0.2436 ± 0.2522,0.2476 ± 0.2524      #Done
+-norm_base|div_UCB|c_4|dis_True,0.7204 ± 0.5536,0.4345 ± 0.2829,0.2862 ± 0.2671      #Done
+-norm_base|div_base|N/A|dis_False,0.7204 ± 0.5536,0.5011 ± 0.1728,0.7204 ± 0.5536    #Done
+-norm_base|div_base|N/A|dis_True,0.7072 ± 0.5529,0.3609 ± 0.3056,0.3131 ± 0.2132     #Done
++norm_base|div_UCB|c_2|dis_True,0.7204 ± 0.5536,0.2803 ± 0.2631,0.1342 ± 0.1935
++norm_base|div_UCB|c_3|dis_True,0.7204 ± 0.5536,0.2436 ± 0.2522,0.2476 ± 0.2524
++norm_base|div_UCB|c_4|dis_True,0.7204 ± 0.5536,0.4345 ± 0.2829,0.2862 ± 0.2671
++norm_base|div_base|N/A|dis_False,0.7072 ± 0.5529,0.6358 ± 0.5758,0.6108 ± 0.3287
++norm_base|div_base|N/A|dis_True,0.7072 ± 0.5529,0.3609 ± 0.3056,0.3131 ± 0.2132
+ norm_custom|div_UCB|c_2|dis_True,0.2364 ± 0.2177,0.0014 ± 0.0032,0.0012 ± 0.0028
+ norm_custom|div_UCB|c_3|dis_True,0.2751 ± 0.2562,0.0012 ± 0.0028,0.0000 ± 0.0000
+ norm_custom|div_UCB|c_4|dis_True,0.3574 ± 0.2215,0.0000 ± 0.0000,0.0013 ± 0.0028
++norm_custom|div_base|N/A|dis_False,0.2364 ± 0.2177,0.0696 ± 0.1555,0.0696 ± 0.1555
+ norm_custom|div_base|N/A|dis_True,0.2364 ± 0.2177,0.0012 ± 0.0028,0.1411 ± 0.3156
