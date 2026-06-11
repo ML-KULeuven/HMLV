@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/859734832.svg)](https://doi.org/10.5281/zenodo.20645364)
+
 # From CP Modeling to Preference Elicitation in HMLV Assembly Problems
 
 This repository contains the code and experiment artifacts for the paper
