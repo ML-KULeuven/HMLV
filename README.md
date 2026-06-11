@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/859734832.svg)](https://doi.org/10.5281/zenodo.20645364)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20645364.svg)](https://doi.org/10.5281/zenodo.20645364)
 
 # From CP Modeling to Preference Elicitation in HMLV Assembly Problems
 
